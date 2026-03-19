@@ -61,7 +61,7 @@ with tab1:
         placeholder="Paste any article, essay, email, or content here..."
     )
 
-    if st.button("🔍 Analyze Text", use_container_width=True, key="text_btn"):
+    if st.button(" Analyze Text", use_container_width=True, key="text_btn"):
         if not user_text.strip():
             st.warning("Please enter some text first!")
         else:
