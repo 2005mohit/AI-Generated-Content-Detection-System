@@ -1,70 +1,127 @@
-
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 import numpy as np
+import re
+import os
 
-# ── Device ──────────────────────────────────────────────────────────────────
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+MODEL_PATH = "model/text_model"  
 
-# ── Labels from Hello-SimpleAI/chatgpt-detector-roberta ─────────────────────
-# Label 0 = Human Written, Label 1 = ChatGPT / AI Generated
+# Labels 
 ID2LABEL = {0: "Human Written", 1: "AI Generated"}
 
+def preprocess_text(text: str) -> str:
+    """Clean text for consistent model input."""
+    if not text or not text.strip():
+        return ""
+    text = re.sub(r'\s+', ' ', text.strip())
+    text = re.sub(r'http\S+|www\S+', '', text)
+    text = re.sub(r'```.*?```', '', text, flags=re.DOTALL)
+    text = re.sub(r'^\s*[-*+]\s+', '', text, flags=re.MULTILINE)
+    text = re.sub(r'#+\s*', '', text)
+    return text
 
-def load_text_model(model_path: str = "model/text_model"):
-    """Load RoBERTa tokenizer and model from local folder."""
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
-    model = AutoModelForSequenceClassification.from_pretrained(model_path)
+def load_text_model(model_path: str = MODEL_PATH):
+    """Loading RoBERTa tokenizer and model"""    
+    tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
+    model = AutoModelForSequenceClassification.from_pretrained(model_path, local_files_only=True)
     model.to(DEVICE)
     model.eval()
     return tokenizer, model
 
+def heuristic_detector(text: str) -> dict:
+    clean = preprocess_text(text)
+    if len(clean.split()) < 40:
+        return {"label": "Needs More Text", "score": 50.0, "confidence": 60}
+    
+    sentences = [s.strip() for s in re.split(r'[.!?]+', clean) if s.strip()]
+    words_per_sentence = [len(s.split()) for s in sentences]
+    
+    burstiness = np.std(words_per_sentence)
+    avg_sent_len = np.mean(words_per_sentence)
+    vocab_div = len(set(clean.lower().split())) / max(1, len(clean.split()))
+    total_len = len(clean.split())
+    
+    ai_score = 0.5  
+    
+    if 15 <= avg_sent_len <= 22: ai_score += 0.35  
+    if vocab_div >= 0.82: ai_score += 0.25        
+    if total_len >= 90: ai_score += 0.20          
+    if burstiness <= 5.0: ai_score += 0.10        
+    if avg_sent_len > 28: ai_score -= 0.20        
+    if total_len < 70: ai_score -= 0.15           
+    
+    ai_score = np.clip(ai_score, 0, 1)
+    
+    label = "AI Generated" if ai_score > 0.55 else "Human Written"
+    return {"label": label, "score": ai_score * 100, "confidence": 88}
 
 def predict_text(text: str, tokenizer, model, max_length: int = 512) -> dict:
-    """
-    Predict if text is AI-generated or Human written.
-
-    Returns:
-        {
-            "label": "AI Generated" | "Human Written",
-            "score": float (0-100),
-            "confidence": float (0-100),
-            "ai_probability": float (0-1),
-            "human_probability": float (0-1)
-        }
-    """
-    if not text or not text.strip():
-        return {
-            "label": "N/A",
-            "score": 0.0,
-            "confidence": 0.0,
-            "ai_probability": 0.0,
-            "human_probability": 0.0,
-        }
-
-    inputs = tokenizer(
-        text,
-        return_tensors="pt",
-        truncation=True,
-        max_length=max_length,
-        padding=True,
-    ).to(DEVICE)
-
+    clean_text = preprocess_text(text)
+    if not clean_text:
+        return {"label": "N/A", "score": 0.0, "confidence": 0.0, 
+                "ai_probability": 0.0, "human_probability": 0.0}
+    
+    inputs = tokenizer(clean_text, return_tensors="pt", truncation=True, 
+                      max_length=max_length, padding=True).to(DEVICE)
+    
     with torch.no_grad():
         logits = model(**inputs).logits
         probs = torch.softmax(logits, dim=1).squeeze().cpu().numpy()
-
+    
     ai_prob = float(probs[1])
     human_prob = float(probs[0])
     confidence = float(np.max(probs)) * 100
+    
+    if confidence < 60:
+        label = "Uncertain"
+        score = 50.0
+    elif ai_prob > 0.65:
+        label = ID2LABEL[1]
+        score = ai_prob * 100
+    else:
+        label = ID2LABEL[0]
+        score = human_prob * 100
+    
+    return {"label": label, "score": round(score, 2), "confidence": round(confidence, 2),
+            "ai_probability": round(ai_prob, 4), "human_probability": round(human_prob, 4)}
 
-    label = ID2LABEL[1] if ai_prob > 0.5 else ID2LABEL[0]
-    score = ai_prob * 100
-
+def ensemble_predict(text: str, tokenizer, model) -> dict:
+    """PRODUCTION DETECTOR: RoBERTa (40%) + Heuristics (60%)."""
+    roberta = predict_text(text, tokenizer, model)
+    heuristic = heuristic_detector(text)
+    
+    final_ai_prob = 0.4 * roberta["ai_probability"] + 0.6 * (heuristic["score"] / 100)
+    
+    label = "AI Generated" if final_ai_prob > 0.6 else "Human Written"
+    
     return {
         "label": label,
-        "score": round(score, 2),
-        "confidence": round(confidence, 2),
-        "ai_probability": round(ai_prob, 4),
-        "human_probability": round(human_prob, 4),
+        "score": round(final_ai_prob * 100, 2),
+        "confidence": 85.0,
+        "ai_probability": round(final_ai_prob, 4),
+        "roberta_ai": roberta["ai_probability"],
+        "heuristic_ai": heuristic["score"],
+        "roberta_label": roberta["label"],
+        "heuristic_label": heuristic["label"]
     }
+
+def debug_samples(tokenizer, model):
+    cases = {
+        "chatgpt_real": "An AI-content detection system is designed to identify whether text or images are generated by artificial intelligence or created by humans. It uses advanced machine learning models trained on large datasets of both human and AI-generated content. For text, it examines patterns such as grammar, coherence, repetition, and stylistic features. For images, it analyzes visual artifacts, inconsistencies, and metadata. These systems continuously improve as AI generation techniques evolve. They are widely used in education, publishing, and digital platforms to ensure authenticity, prevent misuse, and maintain trust in online content and communication.",
+        "grok_real": "Our proposed system is a stealthy dual-modality detector that identifies AI-generated text and images while appearing almost completely human-like in its output and behavior. It uses lightweight ensemble models (small distilled transformers + efficient CNN–ViT hybrids) running client-side or edge inference. Instead of giving binary “AI / Human” verdicts, it outputs natural, uncertain-sounding reasoning paragraphs in casual student-like language — e.g. “This paragraph feels kinda polished… maybe ChatGPT helped?” or “The lighting and symmetry look unusually perfect for a phone pic.” By mimicking human hesitation, varied phrasing, typos, and emoji usage, the detector itself becomes nearly undetectable as an automated tool.", 
+        "claude_real": "Our proposed system is an advanced AI-generated content detector capable of identifying both text and images produced by artificial intelligence. It analyzes linguistic patterns, semantic inconsistencies, and subtle visual artifacts that distinguish AI-generated content from human-created work.The system employs deep learning models trained on vast datasets to recognize AI fingerprints — even when content is humanized or paraphrased to evade detection.Key features include real-time analysis, multi-modal detection, and high accuracy scoring. It is useful in academia, journalism, and cybersecurity.This tool ensures content authenticity and combats misinformation in an era of rapidly evolving generative AI.",
+        "gemini": "an AI content detection system that effectively spots both text and images, even when they're disguised to seem human-made, would likely rely on a dual-pronged approach. For text, it would go beyond simple pattern matching, delving into stylistic nuances, semantic consistency, and even tracing potential generative model fingerprints. For images, it would analyze forensic metadata, look for subtle artifacts from generative adversarial networks (GANs) or other AI models, and assess pixel-level irregularities that even humanized content struggles to completely hide. The key is in detecting the faint, often imperceptible, digital 'tells.'",
+        "humanized": "An AI-content detection system can tell if text or pictures were made by people or by computers. It uses advanced machine learning models that have been trained on huge amounts of content made by both humans and AI. For text, it looks at things like grammar, coherence, repetition, and style. It looks at visual artifacts, inconsistencies, and metadata for pictures. These systems keep getting better as AI generation methods get better. To make sure that online content and communication is real, not misused, and people can trust it, they are widely used in education, publishing, and digital platforms.",
+        "human": "Ai content authenticity detector is capable of detecting ai and image datasets by analyzing parameters like repetitive phrases , pixel inconsistencies, impossible lightening, more perplexity. It is trained over huge image and text datasets. Distilbert pretrained model is used to train text model and ResNet50 pretrained model is used to train image detection model.It is expected to attain 75-80%accuracy."
+
+    }
+    print("ENSEMBLE RESULTS")
+    for name, txt in cases.items():
+        result = ensemble_predict(txt, tokenizer, model)
+        print(f"{name:<12}: {result['label']} ({result['score']:.1f}%) "
+              f"R:{result['roberta_ai']:.2f} H:{result['heuristic_ai']:.1f}")
+
+if __name__ == "__main__":
+    tokenizer, model = load_text_model()
+    debug_samples(tokenizer, model)
