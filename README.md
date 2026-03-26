@@ -1,4 +1,4 @@
-# AI Content Authenticity Detection System
+# AI-Generated Content Detection System
 
 **A Capstone Project by K.R. Mangalam University MCA Students**
 
