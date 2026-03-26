@@ -10,7 +10,7 @@ from Pipeline.text_pipeline import load_text_model, ensemble_predict
 
 # ── Page Config ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="AI Content Authenticity app",
+    page_title="AI-Generated Content Detection App",
     page_icon="",
     layout="centered"
 )
@@ -135,4 +135,4 @@ with tab2:
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.divider()
-st.caption("Built with  by 2005mohit | AI Content Authenticity System")
+st.caption("Built with  by 2005mohit | AI-Generated Content Detection System")
