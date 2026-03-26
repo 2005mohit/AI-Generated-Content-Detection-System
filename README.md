@@ -5,7 +5,7 @@
 A **dual-modality AI detection system** that identifies whether text or images are AI-generated or created by humans. This project demonstrates the application of deep learning and ensemble techniques in content authentication.
 
 ## LIVE WEB APPLICATION
-** WEB APPLICATION LINK:** [AI-CONTENT-AUTHENTICITY-SYSTEM](https://content-appenticity-system-entcrhhe9unn8pxhyjb2rp.streamlit.app/)
+**WEB APPLICATION LINK:** [AI-CONTENT-AUTHENTICITY-SYSTEM](https://content-appenticity-system-entcrhhe9unn8pxhyjb2rp.streamlit.app/)
 
 ---
 
