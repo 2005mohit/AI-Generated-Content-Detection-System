@@ -4,6 +4,9 @@
 
 A **dual-modality AI detection system** that identifies whether text or images are AI-generated or created by humans. This project demonstrates the application of deep learning and ensemble techniques in content authentication.
 
+## LIVE WEB APPLICATION
+** WEB APPLICATION LINK:** (AI-CONTENT-AUTHENTICITY-SYSTEM)[https://content-appenticity-system-entcrhhe9unn8pxhyjb2rp.streamlit.app/]
+
 ---
 
 ## Project Overview
@@ -114,11 +117,6 @@ AI-Content-Authenticity-Detection/
 │   │
 │   └── image_model/
 │       └── image_model.pth         # EfficientNet B0 trained weights
-│
-├── notebooks/
-│   ├── preprocessing.ipynb         # EDA & data cleaning
-│   ├── training.ipynb              # Text model training
-│   └── image-detection-model.ipynb # Image model training
 │
 ├── requirements.txt                # Dependencies
 ├── README.md                        # Project documentation
@@ -442,23 +440,6 @@ Actual AI     1,638   612     (Recall: 73%)
 
 ---
 
-## Project Metadata
-
-| Field | Value |
-|-------|-------|
-| **University** | K.R. Mangalam University |
-| **Program** | Master of Computer Applications (MCA) |
-| **Academic Year** | 2025-2026 |
-| **Project Type** | Pre-Final Year Capstone |
-| **Team ID** | 26E1053 |
-| **Faculty Mentor** | Ms. Neha Kaushik |
-| **Team Size** | 5 members |
-| **Duration** | 6 months |
-| **Status** | 90% Complete (Testing phase) |
-| **Submission Date** | March 2026 |
-
----
-
 ## References & Academic Sources
 
 ### Datasets
@@ -473,43 +454,6 @@ Actual AI     1,638   612     (Recall: 73%)
 |-------|-----------|--------|
 | RoBERTa | HuggingFace Transformers | [Model Hub](https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta) |
 | EfficientNet B0 | PyTorch torchvision | [Official Docs](https://pytorch.org/vision/stable/models.html) |
-
-### Related Research
-- Solaiman et al., "Language Models are Unsupervised Multitask Learners" (GPT-2)
-- OpenAI GPT-3 & ChatGPT Technical Reports
-- Tan & Le, "EfficientNet: Rethinking Model Scaling for CNNs"
-- Liu et al., "RoBERTa: A Robustly Optimized BERT Pretraining Approach"
-
----
-
-## Learning Outcomes
-
-Through this project, the team gained expertise in:
-
-1. **Deep Learning**:
-   - Transfer learning and fine-tuning strategies
-   - Ensemble methods and model combination
-   - Mixed precision training for efficiency
-
-2. **NLP**:
-   - Transformer-based architectures (RoBERTa)
-   - Tokenization and text preprocessing
-   - Feature engineering for text analysis
-
-3. **Computer Vision**:
-   - CNN architecture (EfficientNet)
-   - Image augmentation and normalization
-   - Phase-wise training for optimization
-
-4. **Project Management**:
-   - Team collaboration and version control
-   - Iterative development and testing
-   - Documentation and presentation
-
-5. **Production Deployment**:
-   - Streamlit web application development
-   - Model serving and inference optimization
-   - Cloud deployment considerations
 
 --- 
 
