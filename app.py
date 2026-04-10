@@ -3,35 +3,86 @@ from PIL import Image
 import sys
 import os
 
-# ── Path setup ───────────────────────────────────────────────────────────────
+# ── Path setup ─────────────────────────────────────────────
 sys.path.append(os.path.dirname(__file__))
 from Pipeline.image_pipeline import load_image_model, predict_image
 from Pipeline.text_pipeline import load_text_model, ensemble_predict
 
-# ── Page Config ──────────────────────────────────────────────────────────────
+# ── Page Config ────────────────────────────────────────────
 st.set_page_config(
-    page_title="AI-Generated Content Detection App",
-    page_icon="",
-    layout="centered"
+    page_title="AI Content detaction system",
+    page_icon="🤖",
+    layout="wide"
 )
 
-# ── Custom CSS ───────────────────────────────────────────────────────────────
+# ── CUSTOM DARK UI (ChatGPT Style) ─────────────────────────
 st.markdown("""
 <style>
-    .result-box {
+    body {
+        background-color: #0B0F14;
+        color: white;
+    }
+
+    .main-title {
+        font-size: 36px;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .sub-text {
+        color: #9CA3AF;
+        margin-bottom: 25px;
+    }
+
+    .card {
+        background: #111827;
+        padding: 25px;
+        border-radius: 16px;
+        box-shadow: 0px 0px 20px rgba(0,0,0,0.4);
+    }
+
+    .upload-box {
+        border: 2px dashed #374151;
+        padding: 40px;
+        border-radius: 16px;
+        text-align: center;
+        transition: 0.3s;
+    }
+
+    .upload-box:hover {
+        border-color: #22c55e;
+        background: #0f172a;
+    }
+
+    .result-ai {
+        background: #1f2937;
+        border-left: 5px solid #ef4444;
         padding: 20px;
         border-radius: 12px;
-        margin: 10px 0;
+    }
+
+    .result-human {
+        background: #1f2937;
+        border-left: 5px solid #22c55e;
+        padding: 20px;
+        border-radius: 12px;
+    }
+
+    .metric-card {
+        background: #111827;
+        padding: 15px;
+        border-radius: 12px;
         text-align: center;
     }
-    .ai-box    { background: #ffe5e5; border: 2px solid #ff4444; }
-    .human-box { background: #e5ffe5; border: 2px solid #44bb44; }
-    .metric-label { font-size: 14px; color: #666; margin-bottom: 4px; }
-    .metric-value { font-size: 28px; font-weight: bold; }
+
+    .big-score {
+        font-size: 40px;
+        font-weight: bold;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Load Models (cached) ──────────────────────────────────────────────────────
+# ── Load Models ────────────────────────────────────────────
 @st.cache_resource
 def get_image_model():
     return load_image_model("model/image_model/image_model.pth")
@@ -40,99 +91,104 @@ def get_image_model():
 def get_text_model():
     return load_text_model("model/text_model")
 
+# ── HEADER (MODEL NAME LIKE CHATGPT UI) ────────────────────
+st.markdown('<div class="main-title">🤖 AI Content Authenticity Detector</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-text">Analyze text & images with AI detection models (RoBERTa + EfficientNet)</div>', unsafe_allow_html=True)
 
-# ── UI ────────────────────────────────────────────────────────────────────────
-st.title(" AI Content Authenticity Detector")
-st.markdown("Detect whether **text** or **image** is **AI-Generated** or **Human/Real**")
+# ── MODE SELECT (CHATGPT STYLE) ────────────────────────────
+mode = st.radio(
+    "",
+    ["📝 Text Analysis", "🖼️ Image Analysis"],
+    horizontal=True
+)
+
 st.divider()
 
-tab1, tab2 = st.tabs([" Text Detection", " Image Detection"])
+# ───────────────────────── TEXT MODE ───────────────────────
+if "Text" in mode:
 
-# ─────────────────────────────────────────────────────
-# TAB 1 — TEXT
-# ─────────────────────────────────────────────────────
-with tab1:
-    st.subheader("Text AI Detection")
-    st.caption("Uses RoBERTa (chatgpt-detector-roberta) model")
+    st.markdown("### 🧠 Text Detection (RoBERTa Model)")
 
     user_text = st.text_area(
-        "Enter text to analyze:",
+        "",
         height=200,
-        placeholder="Paste any article, essay, email, or content here..."
+        placeholder="Paste your content here..."
     )
 
-    if st.button(" Analyze Text", use_container_width=True, key="text_btn"):
+    analyze = st.button("🚀 Analyze Text", use_container_width=True)
+
+    if analyze:
         if not user_text.strip():
-            st.warning("Please enter some text first!")
+            st.warning("⚠️ Please enter text")
         else:
-            with st.spinner("Analyzing text..."):
+            with st.spinner("Analyzing..."):
                 tokenizer, text_model = get_text_model()
                 result = ensemble_predict(user_text, tokenizer, text_model)
 
-            # Result display
-            box_class = "ai-box" if result["label"] == "AI Generated" else "human-box"
-            icon = "🤖" if result["label"] == "AI Generated" else ""
+            box_class = "result-ai" if result["label"] == "AI Generated" else "result-human"
 
+            # RESULT CARD
             st.markdown(f"""
-            <div class="result-box {box_class}">
-                <h2>{icon} {result['label']}</h2>
+            <div class="{box_class}">
+                <h2>{result['label']}</h2>
+                <div class="big-score">{result['score']}%</div>
+                <p>AI Likelihood</p>
             </div>
             """, unsafe_allow_html=True)
 
+            # METRICS
             col1, col2, col3, col4 = st.columns(4)
-            with col1: st.metric("AI Score", f"{result['score']}%")
-            with col2: st.metric("Confidence", f"{result['confidence']}%")
-            with col3: st.metric("RoBERTa", f"{result['roberta_ai']*100:.0f}%")
-            with col4: st.metric("Heuristic", f"{result['heuristic_ai']:.0f}%")
-            
-            st.caption(f"RoBERTa: {result['roberta_label']} | Heuristic: {result['heuristic_label']}")
-            st.divider()
+
+            col1.markdown(f"<div class='metric-card'><b>Confidence</b><br>{result['confidence']}%</div>", unsafe_allow_html=True)
+            col2.markdown(f"<div class='metric-card'><b>RoBERTa</b><br>{result['roberta_ai']*100:.0f}%</div>", unsafe_allow_html=True)
+            col3.markdown(f"<div class='metric-card'><b>Heuristic</b><br>{result['heuristic_ai']:.0f}%</div>", unsafe_allow_html=True)
+            col4.markdown(f"<div class='metric-card'><b>Label</b><br>{result['label']}</div>", unsafe_allow_html=True)
+
             st.progress(result['ai_probability'], text=f"AI Likelihood: {result['score']}%")
 
 
-# ─────────────────────────────────────────────────────
-# TAB 2 — IMAGE
-# ─────────────────────────────────────────────────────
-with tab2:
-    st.subheader("Image AI Detection")
-    st.caption("Uses EfficientNet model")
+# ───────────────────────── IMAGE MODE ──────────────────────
+if "Image" in mode:
+
+    st.markdown("### 🖼️ Image Detection (EfficientNet Model)")
 
     uploaded_file = st.file_uploader(
-        "Upload an image:",
-        type=["jpg", "jpeg", "png", "webp"],
-        label_visibility="collapsed"
+        "",
+        type=["jpg", "jpeg", "png", "webp"]
     )
 
     if uploaded_file:
         image = Image.open(uploaded_file)
-        st.image(image, caption="Uploaded Image", use_container_width=True)
 
-        if st.button(" Analyze Image", use_container_width=True, key="img_btn"):
-            with st.spinner("Analyzing image..."):
+        col1, col2 = st.columns([1,1])
+
+        with col1:
+            st.image(image, caption="Uploaded Image", use_container_width=True)
+
+        with col2:
+            with st.spinner("Analyzing image automatically..."):
                 image_model = get_image_model()
                 result = predict_image(image, image_model)
 
-            # Result display
-            box_class = "ai-box" if result["label"] == "AI Generated" else "human-box"
-            icon = "🤖" if result["label"] == "AI Generated" else "📷"
+            box_class = "result-ai" if result["label"] == "AI Generated" else "result-human"
 
             st.markdown(f"""
-            <div class="result-box {box_class}">
-                <h2>{icon} {result['label']}</h2>
+            <div class="{box_class}">
+                <h2>{result['label']}</h2>
+                <div class="big-score">{result['score']}%</div>
+                <p>AI Likelihood</p>
             </div>
             """, unsafe_allow_html=True)
 
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric(" AI Score", f"{result['score']}%")
-            with col2:
-                st.metric(" Confidence", f"{result['confidence']}%")
-            with col3:
-                st.metric("📷 Real Prob", f"{round(result['real_probability']*100, 2)}%")
+            # METRICS
+            colA, colB, colC = st.columns(3)
 
-            st.divider()
+            colA.markdown(f"<div class='metric-card'><b>Confidence</b><br>{result['confidence']}%</div>", unsafe_allow_html=True)
+            colB.markdown(f"<div class='metric-card'><b>AI Score</b><br>{result['score']}%</div>", unsafe_allow_html=True)
+            colC.markdown(f"<div class='metric-card'><b>Real Prob</b><br>{round(result['real_probability']*100,2)}%</div>", unsafe_allow_html=True)
+
             st.progress(result['ai_probability'], text=f"AI Likelihood: {result['score']}%")
 
-# ── Footer ────────────────────────────────────────────────────────────────────
+# ── FOOTER ────────────────────────────────────────────────
 st.divider()
-st.caption("Built with  by 2005mohit | AI-Generated Content Detection System")
+st.caption("🚀 Built by Mohit | AI Detection System")
