@@ -10,68 +10,62 @@ from Pipeline.text_pipeline import load_text_model, ensemble_predict
 
 # ── Page Config ────────────────────────────────────────────
 st.set_page_config(
-    page_title="AI Detection",
+    page_title="AI Detection Dashboard",
     layout="wide"
 )
 
-# ── MODERN LIGHT UI (Perplexity Style) ─────────────────────
+# ── LIGHT UI ───────────────────────────────────────────────
 st.markdown("""
 <style>
     body {
-        background: linear-gradient(to bottom, #F8FAFC, #EEF2FF);
+        background-color: #F9FAFB;
         color: #111827;
     }
 
-    .center-box {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin-top: 80px;
-    }
-
-    .title {
-        font-size: 42px;
+    .main-title {
+        font-size: 28px;
         font-weight: 600;
         margin-bottom: 20px;
-        color: #1E293B;
     }
 
-    .input-card {
+    .input-container {
         background: white;
-        padding: 20px;
-        border-radius: 16px;
-        width: 600px;
-        box-shadow: 0px 10px 30px rgba(0,0,0,0.08);
         border: 1px solid #E5E7EB;
+        border-radius: 20px;
+        padding: 20px;
+        box-shadow: 0px 4px 20px rgba(0,0,0,0.05);
     }
 
-    .result-card {
+    .result-box {
         background: white;
-        padding: 20px;
         border-radius: 16px;
+        padding: 20px;
         margin-top: 20px;
-        width: 600px;
-        box-shadow: 0px 10px 30px rgba(0,0,0,0.06);
         border: 1px solid #E5E7EB;
     }
 
     .ai {
-        border-left: 5px solid #EF4444;
+        border-left: 5px solid #DC2626;
     }
 
     .human {
-        border-left: 5px solid #22C55E;
+        border-left: 5px solid #16A34A;
     }
 
     .score {
-        font-size: 36px;
+        font-size: 32px;
         font-weight: bold;
     }
 
+    .sidebar-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Load Models ────────────────────────────────────────────
+# ── LOAD MODELS ────────────────────────────────────────────
 @st.cache_resource
 def get_image_model():
     return load_image_model("model/image_model/image_model.pth")
@@ -80,70 +74,90 @@ def get_image_model():
 def get_text_model():
     return load_text_model("model/text_model")
 
-# ── CENTER UI ──────────────────────────────────────────────
-st.markdown('<div class="center-box">', unsafe_allow_html=True)
+# ── SIDEBAR ────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown('<div class="sidebar-title">History</div>', unsafe_allow_html=True)
+    st.write("ai content authenticity system")
 
-st.markdown('<div class="title">AI Detection</div>', unsafe_allow_html=True)
+    st.divider()
 
-# MODE SWITCH
+    st.markdown('<div class="sidebar-title">User Profile</div>', unsafe_allow_html=True)
+    st.write("User")
+
+# ── MAIN HEADER ────────────────────────────────────────────
+st.markdown('<div class="main-title">AI Content Authenticity System</div>', unsafe_allow_html=True)
+
+# ── MODE SELECT ────────────────────────────────────────────
 mode = st.radio("", ["Text", "Image"], horizontal=True)
 
-# INPUT CARD
-st.markdown('<div class="input-card">', unsafe_allow_html=True)
+# ── INPUT BOX (CENTER STYLE) ───────────────────────────────
+st.markdown('<div class="input-container">', unsafe_allow_html=True)
 
 result = None
 
-# ───────── TEXT MODE ─────────
-if mode == "Text":
-    user_text = st.text_area(
-        "",
-        height=120,
-        placeholder="Ask anything or paste content..."
-    )
+col1, col2 = st.columns([6,1])
 
-    if st.button("Analyze", use_container_width=True):
-        if user_text.strip():
-            with st.spinner("Processing..."):
-                tokenizer, text_model = get_text_model()
-                result = ensemble_predict(user_text, tokenizer, text_model)
-        else:
-            st.warning("Enter text first")
+with col1:
+    if mode == "Text":
+        user_text = st.text_area(
+            "",
+            height=120,
+            placeholder="Upload text or paste content..."
+        )
 
-# ───────── IMAGE MODE ─────────
-if mode == "Image":
-    uploaded_file = st.file_uploader("", type=["jpg", "png", "jpeg"])
+    else:
+        uploaded_file = st.file_uploader("", type=["jpg", "jpeg", "png"])
 
-    if uploaded_file:
-        image = Image.open(uploaded_file)
-        st.image(image, use_container_width=True)
-
-        with st.spinner("Processing image..."):
-            image_model = get_image_model()
-            result = predict_image(image, image_model)
+with col2:
+    analyze = st.button("→", use_container_width=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# ───────── RESULT DISPLAY ─────────
+# ── PROCESSING ─────────────────────────────────────────────
+if analyze:
+
+    # TEXT
+    if mode == "Text":
+        if not user_text.strip():
+            st.warning("Enter text first")
+        else:
+            with st.spinner("Processing..."):
+                tokenizer, text_model = get_text_model()
+                result = ensemble_predict(user_text, tokenizer, text_model)
+
+    # IMAGE
+    else:
+        if uploaded_file:
+            image = Image.open(uploaded_file)
+            st.image(image, use_container_width=True)
+
+            with st.spinner("Processing image..."):
+                image_model = get_image_model()
+                result = predict_image(image, image_model)
+        else:
+            st.warning("Upload image first")
+
+# ── RESULT DISPLAY ─────────────────────────────────────────
 if result:
     box_class = "ai" if result["label"] == "AI Generated" else "human"
 
-    st.markdown(f'<div class="result-card {box_class}">', unsafe_allow_html=True)
+    st.markdown(f'<div class="result-box {box_class}">', unsafe_allow_html=True)
 
     st.markdown(f"<h3>{result['label']}</h3>", unsafe_allow_html=True)
     st.markdown(f"<div class='score'>{result['score']}%</div>", unsafe_allow_html=True)
     st.write("AI Likelihood")
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
     col1.metric("Confidence", f"{result['confidence']}%")
-    
+
     if "roberta_ai" in result:
-        col2.metric("Model Score", f"{result['roberta_ai']*100:.0f}%")
+        col2.metric("RoBERTa", f"{result['roberta_ai']*100:.0f}%")
+        col3.metric("Heuristic", f"{result['heuristic_ai']:.0f}%")
     else:
-        col2.metric("Real Probability", f"{round(result['real_probability']*100,2)}%")
+        col2.metric("AI Score", f"{result['score']}%")
+        col3.metric("Real Probability", f"{round(result['real_probability']*100,2)}%")
 
     st.progress(result['ai_probability'])
 
     st.markdown('</div>', unsafe_allow_html=True)
-
-st.markdown('</div>', unsafe_allow_html=True)
