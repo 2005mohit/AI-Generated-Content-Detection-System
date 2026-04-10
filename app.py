@@ -9,59 +9,69 @@ from Pipeline.image_pipeline import load_image_model, predict_image
 from Pipeline.text_pipeline import load_text_model, ensemble_predict
 
 # ── Page Config ────────────────────────────────────────────
-st.set_page_config(
-    page_title="AI Detection Dashboard",
-    layout="wide"
-)
+st.set_page_config(page_title="AI Content Authenticity System", layout="wide")
 
-# ── LIGHT UI ───────────────────────────────────────────────
+# ── SESSION STATE ──────────────────────────────────────────
+if "mode" not in st.session_state:
+    st.session_state.mode = None
+
+if "result" not in st.session_state:
+    st.session_state.result = None
+
+# ── UI CSS ─────────────────────────────────────────────────
 st.markdown("""
 <style>
-    body {
-        background-color: #F9FAFB;
-        color: #111827;
-    }
+body {
+    background-color: #F9FAFB;
+}
 
-    .main-title {
-        font-size: 28px;
-        font-weight: 600;
-        margin-bottom: 20px;
-    }
+.sidebar-icons {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
+}
 
-    .input-container {
-        background: white;
-        border: 1px solid #E5E7EB;
-        border-radius: 20px;
-        padding: 20px;
-        box-shadow: 0px 4px 20px rgba(0,0,0,0.05);
-    }
+.icon {
+    font-size: 20px;
+    padding: 10px;
+    border-radius: 10px;
+    cursor: pointer;
+}
 
-    .result-box {
-        background: white;
-        border-radius: 16px;
-        padding: 20px;
-        margin-top: 20px;
-        border: 1px solid #E5E7EB;
-    }
+.input-box {
+    background: white;
+    border: 1px solid #E5E7EB;
+    border-radius: 20px;
+    padding: 15px;
+    width: 60%;
+    margin: auto;
+    box-shadow: 0px 4px 20px rgba(0,0,0,0.05);
+}
 
-    .ai {
-        border-left: 5px solid #DC2626;
-    }
+.result-box {
+    width: 60%;
+    margin: auto;
+    margin-top: 20px;
+    background: white;
+    padding: 20px;
+    border-radius: 16px;
+    border: 1px solid #E5E7EB;
+}
 
-    .human {
-        border-left: 5px solid #16A34A;
-    }
+.center-title {
+    text-align: center;
+    font-size: 26px;
+    font-weight: 600;
+    margin-top: 40px;
+}
 
-    .score {
-        font-size: 32px;
-        font-weight: bold;
-    }
-
-    .sidebar-title {
-        font-size: 16px;
-        font-weight: 600;
-        margin-bottom: 10px;
-    }
+.bottom-box {
+    position: fixed;
+    bottom: 20px;
+    left: 35%;
+    width: 30%;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -74,90 +84,94 @@ def get_image_model():
 def get_text_model():
     return load_text_model("model/text_model")
 
-# ── SIDEBAR ────────────────────────────────────────────────
+# ── SIDEBAR (ICONS ONLY) ───────────────────────────────────
 with st.sidebar:
-    st.markdown('<div class="sidebar-title">History</div>', unsafe_allow_html=True)
-    st.write("ai content authenticity system")
+    st.markdown('<div class="sidebar-icons">', unsafe_allow_html=True)
+    st.write("🏠")
+    st.write("🕘")
+    st.write("➕")
+    st.write("⚙️")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    st.divider()
+# ── TITLE ──────────────────────────────────────────────────
+st.markdown('<div class="center-title">AI Content Authenticity System</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="sidebar-title">User Profile</div>', unsafe_allow_html=True)
-    st.write("User")
+# ── INPUT FUNCTION ─────────────────────────────────────────
+def input_ui(center=True):
+    container_class = "input-box" if center else "bottom-box"
 
-# ── MAIN HEADER ────────────────────────────────────────────
-st.markdown('<div class="main-title">AI Content Authenticity System</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="{container_class}">', unsafe_allow_html=True)
 
-# ── MODE SELECT ────────────────────────────────────────────
-mode = st.radio("", ["Text", "Image"], horizontal=True)
+    col1, col2 = st.columns([6,1])
 
-# ── INPUT BOX (CENTER STYLE) ───────────────────────────────
-st.markdown('<div class="input-container">', unsafe_allow_html=True)
-
-result = None
-
-col1, col2 = st.columns([6,1])
-
-with col1:
-    if mode == "Text":
-        user_text = st.text_area(
+    with col1:
+        # + BUTTON OPTION
+        option = st.selectbox(
             "",
-            height=120,
-            placeholder="Upload text or paste content..."
+            ["Select Input", "Text", "Image"],
+            label_visibility="collapsed"
         )
 
-    else:
-        uploaded_file = st.file_uploader("", type=["jpg", "jpeg", "png"])
+        if option == "Text":
+            user_text = st.text_area("", placeholder="Paste text...", height=100)
+            st.session_state.mode = "text"
+            return user_text, None
 
-with col2:
-    analyze = st.button("→", use_container_width=True)
+        elif option == "Image":
+            uploaded_file = st.file_uploader("", type=["jpg","png","jpeg"])
+            st.session_state.mode = "image"
+            return None, uploaded_file
 
-st.markdown('</div>', unsafe_allow_html=True)
+    with col2:
+        analyze = st.button("→", use_container_width=True)
 
-# ── PROCESSING ─────────────────────────────────────────────
-if analyze:
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # TEXT
-    if mode == "Text":
-        if not user_text.strip():
-            st.warning("Enter text first")
-        else:
-            with st.spinner("Processing..."):
-                tokenizer, text_model = get_text_model()
-                result = ensemble_predict(user_text, tokenizer, text_model)
+    return None, None if not analyze else None
 
-    # IMAGE
-    else:
-        if uploaded_file:
-            image = Image.open(uploaded_file)
-            st.image(image, use_container_width=True)
+# ── CENTER OR BOTTOM INPUT ─────────────────────────────────
+if st.session_state.result is None:
+    user_text, uploaded_file = input_ui(center=True)
+else:
+    user_text, uploaded_file = input_ui(center=False)
 
-            with st.spinner("Processing image..."):
-                image_model = get_image_model()
-                result = predict_image(image, image_model)
-        else:
-            st.warning("Upload image first")
+# ── PROCESS ────────────────────────────────────────────────
+if st.button("Process", key="hidden_process", help="hidden trigger"):
+    pass
 
-# ── RESULT DISPLAY ─────────────────────────────────────────
-if result:
-    box_class = "ai" if result["label"] == "AI Generated" else "human"
+if user_text or uploaded_file:
+    if st.session_state.mode == "text" and user_text:
+        with st.spinner("Processing..."):
+            tokenizer, text_model = get_text_model()
+            st.session_state.result = ensemble_predict(user_text, tokenizer, text_model)
 
-    st.markdown(f'<div class="result-box {box_class}">', unsafe_allow_html=True)
+    elif st.session_state.mode == "image" and uploaded_file:
+        image = Image.open(uploaded_file)
+        with st.spinner("Processing image..."):
+            image_model = get_image_model()
+            st.session_state.result = predict_image(image, image_model)
 
-    st.markdown(f"<h3>{result['label']}</h3>", unsafe_allow_html=True)
-    st.markdown(f"<div class='score'>{result['score']}%</div>", unsafe_allow_html=True)
+# ── RESULT CENTER ──────────────────────────────────────────
+if st.session_state.result:
+    r = st.session_state.result
+
+    st.markdown('<div class="result-box">', unsafe_allow_html=True)
+
+    st.subheader(r["label"])
+    st.markdown(f"### {r['score']}%")
     st.write("AI Likelihood")
 
     col1, col2, col3 = st.columns(3)
 
-    col1.metric("Confidence", f"{result['confidence']}%")
+    col1.metric("Confidence", f"{r['confidence']}%")
 
-    if "roberta_ai" in result:
-        col2.metric("RoBERTa", f"{result['roberta_ai']*100:.0f}%")
-        col3.metric("Heuristic", f"{result['heuristic_ai']:.0f}%")
+    if "roberta_ai" in r:
+        col2.metric("RoBERTa", f"{r['roberta_ai']*100:.0f}%")
+        col3.metric("Heuristic", f"{r['heuristic_ai']:.0f}%")
     else:
-        col2.metric("AI Score", f"{result['score']}%")
-        col3.metric("Real Probability", f"{round(result['real_probability']*100,2)}%")
+        col2.metric("AI Score", f"{r['score']}%")
+        col3.metric("Real Probability", f"{round(r['real_probability']*100,2)}%")
 
-    st.progress(result['ai_probability'])
+    st.progress(r["ai_probability"])
 
     st.markdown('</div>', unsafe_allow_html=True)
