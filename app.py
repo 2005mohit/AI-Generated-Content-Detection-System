@@ -5,203 +5,342 @@ import os
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from Pipeline.text_pipeline import load_text_model, ensemble_predict
+from Pipeline.text_pipeline import ensemble_predict
 from Pipeline.image_pipeline import load_image_model, predict_image
 
-# ── PAGE CONFIG ─────────────────────────────────────────────
+# ── Page Config ──────────────────────────────────────────────
 st.set_page_config(
     page_title="AI Content Authenticity Detector",
     page_icon="🤖",
     layout="wide"
 )
 
-# ── CSS ─────────────────────────────────────────────────────
+# ── Custom CSS ────────────────────────────────────────────────
 st.markdown("""
 <style>
-.block-container {max-width: 1100px; padding-top: 1.5rem;}
-
-.hero {
-    background: linear-gradient(135deg, #1e293b, #334155);
-    padding: 28px;
-    border-radius: 14px;
+  .hero-header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    padding: 2rem 2.5rem;
+    border-radius: 16px;
+    margin-bottom: 2rem;
     text-align: center;
-    margin-bottom: 25px;
-}
-.hero h1 {color:white; margin-bottom:5px;}
-.hero p {color:#cbd5e1; font-size:14px;}
-
-.result-ai {
-    background:#fff1f2;
-    border-left:4px solid #ef4444;
-    padding:16px;
-    border-radius:10px;
-}
-.result-human {
-    background:#f0fdf4;
-    border-left:4px solid #22c55e;
-    padding:16px;
-    border-radius:10px;
-}
-.result-uncertain {
-    background:#fffbeb;
-    border-left:4px solid #f59e0b;
-    padding:16px;
-    border-radius:10px;
-}
-.big {font-size:32px; font-weight:600;}
-
-.metric {
-    background:#f8fafc;
-    padding:10px;
-    border-radius:8px;
-    border:1px solid #e2e8f0;
-    text-align:center;
-}
+  }
+  .hero-header h1 {
+    color: #ffffff;
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 0.4rem;
+  }
+  .hero-header p {
+    color: #a0aec0;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+  }
+  .badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+  .badge {
+    background: rgba(255,255,255,0.1);
+    color: #e2e8f0;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 999px;
+    padding: 0.25rem 0.85rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+  }
+  .result-ai {
+    background: linear-gradient(135deg, #fff5f5, #fed7d7);
+    border: 2px solid #fc8181;
+    border-radius: 14px;
+    padding: 1.4rem;
+    text-align: center;
+    margin: 1rem 0;
+  }
+  .result-human {
+    background: linear-gradient(135deg, #f0fff4, #c6f6d5);
+    border: 2px solid #68d391;
+    border-radius: 14px;
+    padding: 1.4rem;
+    text-align: center;
+    margin: 1rem 0;
+  }
+  .result-uncertain {
+    background: linear-gradient(135deg, #fffff0, #fefcbf);
+    border: 2px solid #f6e05e;
+    border-radius: 14px;
+    padding: 1.4rem;
+    text-align: center;
+    margin: 1rem 0;
+  }
+  .result-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 0.3rem;
+  }
+  .result-sub {
+    font-size: 0.85rem;
+    color: #555;
+  }
+  .metric-row {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-top: 0.8rem;
+  }
+  .metric-card {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.6rem 1rem;
+    flex: 1;
+    min-width: 90px;
+    text-align: center;
+  }
+  .metric-value {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #2d3748;
+  }
+  .metric-label {
+    font-size: 0.72rem;
+    color: #718096;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.1rem;
+  }
+  .section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #718096;
+    margin-bottom: 0.4rem;
+  }
+  .warning-box {
+    background: #fffbeb;
+    border: 1px solid #f6e05e;
+    border-radius: 10px;
+    padding: 0.7rem 1rem;
+    font-size: 0.85rem;
+    color: #744210;
+    margin-bottom: 0.8rem;
+  }
+  .footer {
+    text-align: center;
+    color: #a0aec0;
+    font-size: 0.78rem;
+    margin-top: 3rem;
+    padding: 1rem;
+    border-top: 1px solid #e2e8f0;
+  }
+  .block-container { padding-top: 1.5rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── HEADER ──────────────────────────────────────────────────
+# ── Hero Header ───────────────────────────────────────────────
 st.markdown("""
-<div class="hero">
-<h1>AI Content Authenticity Detector</h1>
-<p>Detect whether text or images are AI-generated or human-created</p>
+<div class="hero-header">
+  <h1>🤖 AI Content Authenticity Detector</h1>
+  <p>Detect whether text or image is AI-Generated or Human/Real</p>
+  <div class="badge-row">
+    <span class="badge">🧠 RoBERTa Model</span>
+    <span class="badge">👁️ EfficientNet B0</span>
+    <span class="badge">⚡ Real-Time Inference</span>
+  </div>
 </div>
 """, unsafe_allow_html=True)
 
-# ── LOAD MODELS ─────────────────────────────────────────────
-@st.cache_resource
-def get_text_model():
-    return load_text_model("model/text_model")
-
+# ── Load image model (cached) ─────────────────────────────────
 @st.cache_resource
 def get_image_model():
     return load_image_model()
 
-tokenizer, text_model = get_text_model()
 image_model = get_image_model()
 
-# ── TABS ────────────────────────────────────────────────────
-tab1, tab2 = st.tabs(["📝 Text Analysis", "🖼️ Image Analysis"])
+# ── Tabs ──────────────────────────────────────────────────────
+tab1, tab2 = st.tabs(["📝 Text Detection", "🖼️ Image Detection"])
 
-# ════════════════════════════════════════════════════════════
-# TEXT ANALYSIS
-# ════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
+# TAB 1 — TEXT DETECTION
+# ════════════════════════════════════════════════════════════════
 with tab1:
+    st.markdown('<p class="section-label">Uses RoBERTa (chatgpt-detector-roberta) model</p>',
+                unsafe_allow_html=True)
 
     user_text = st.text_area(
-        "Enter text",
-        height=180,
-        placeholder="Paste your text here..."
+        label="Enter text to analyze:",
+        placeholder="Paste or type your text here...",
+        height=200,
+        label_visibility="visible"
     )
 
-    if st.button("Analyze Text", use_container_width=True):
+    analyze_text = st.button("🔍 Analyze Text", use_container_width=True, key="txt_btn")
 
-        if not user_text.strip():
-            st.warning("Please enter text")
+    if analyze_text:
+        if not user_text or not user_text.strip():
+            st.warning("⚠️ Please enter some text to analyze.")
         else:
-            with st.spinner("Analyzing..."):
-                result = ensemble_predict(user_text, tokenizer, text_model)
+            word_count = len(user_text.strip().split())
 
-            ai_score = result.get("ai_score", 0)
-            confidence = result.get("confidence", 0)
-            label = result.get("label", "")
+            if word_count < 10:
+                st.markdown("""
+                <div class="warning-box">
+                  ⚠️ <strong>Short Text Warning</strong> — Less than 10 words detected.
+                  Results may not be reliable. Try providing more content.
+                </div>
+                """, unsafe_allow_html=True)
 
-            # ── RESULT ──
+            with st.spinner("Analyzing text..."):
+                result = ensemble_predict(user_text)
+
+            ai_score      = result.get("ai_score", 0)
+            confidence    = result.get("confidence", 0)
+            label         = result.get("label", "Unknown")
+            roberta_pct   = result.get("roberta_score", 0)
+            heuristic_pct = result.get("heuristic_score", 0)
+
+            # Result Box
             if confidence < 0.60:
                 st.markdown(f"""
                 <div class="result-uncertain">
-                <b>UNCERTAIN</b>
-                <div class="big">{ai_score*100:.1f}%</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            elif ai_score > 0.5:
+                  <div class="result-title">⚠️ UNCERTAIN</div>
+                  <div class="result-sub">Low Confidence — Result may not be reliable<br>
+                  Try providing more content for better accuracy</div>
+                </div>""", unsafe_allow_html=True)
+            elif ai_score > 0.60:
                 st.markdown(f"""
                 <div class="result-ai">
-                <b>AI Generated</b>
-                <div class="big">{ai_score*100:.1f}%</div>
-                </div>
-                """, unsafe_allow_html=True)
-
+                  <div class="result-title">🤖 AI Generated</div>
+                  <div class="result-sub">RoBERTa: {label} | Heuristic: AI Generated</div>
+                </div>""", unsafe_allow_html=True)
             else:
                 st.markdown(f"""
                 <div class="result-human">
-                <b>Human Written</b>
-                <div class="big">{ai_score*100:.1f}%</div>
-                </div>
-                """, unsafe_allow_html=True)
+                  <div class="result-title">✅ Human Written</div>
+                  <div class="result-sub">RoBERTa: {label} | Heuristic: Human Generated</div>
+                </div>""", unsafe_allow_html=True)
 
-            # ── METRICS ──
-            col1, col2, col3 = st.columns(3)
-            col1.markdown(f"<div class='metric'>Confidence<br><b>{confidence*100:.1f}%</b></div>", unsafe_allow_html=True)
-            col2.markdown(f"<div class='metric'>AI Score<br><b>{ai_score*100:.1f}%</b></div>", unsafe_allow_html=True)
-            col3.markdown(f"<div class='metric'>Prediction<br><b>{label}</b></div>", unsafe_allow_html=True)
+            # Metric Cards
+            st.markdown(f"""
+            <div class="metric-row">
+              <div class="metric-card">
+                <div class="metric-value">{ai_score*100:.1f}%</div>
+                <div class="metric-label">AI Score</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{confidence*100:.1f}%</div>
+                <div class="metric-label">Confidence</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{roberta_pct*100:.0f}%</div>
+                <div class="metric-label">RoBERTa</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{heuristic_pct*100:.0f}%</div>
+                <div class="metric-label">Heuristic</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{word_count}</div>
+                <div class="metric-label">Words</div>
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
 
             st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown(f"**AI Likelihood: {ai_score*100:.2f}%**")
             st.progress(float(ai_score))
 
-# ════════════════════════════════════════════════════════════
-# IMAGE ANALYSIS
-# ════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
+# TAB 2 — IMAGE DETECTION  (side-by-side layout)
+# ════════════════════════════════════════════════════════════════
 with tab2:
+    st.markdown('<p class="section-label">Uses EfficientNet model</p>',
+                unsafe_allow_html=True)
 
-    uploaded_file = st.file_uploader("", type=["jpg", "jpeg", "png", "webp"])
+    uploaded_file = st.file_uploader(
+        label="Upload Image",
+        type=["jpg", "jpeg", "png", "webp"],
+        label_visibility="collapsed"
+    )
 
-    if uploaded_file:
-
+    if uploaded_file is not None:
         image = Image.open(uploaded_file).convert("RGB")
 
-        col1, col2 = st.columns([1, 1.2])
+        # ── Side-by-side: image LEFT | analysis RIGHT ─────────
+        col_img, col_result = st.columns([1, 1])
 
-        # ── IMAGE ──
-        with col1:
-            st.image(image, width=280)
+        with col_img:
+            st.markdown('<p class="section-label">Uploaded Image</p>',
+                        unsafe_allow_html=True)
+            st.image(image, width=260)   # ← your requested logic
 
-        # ── RESULT SIDE ──
-        with col2:
+        with col_result:
+            st.markdown('<p class="section-label">Analysis</p>',
+                        unsafe_allow_html=True)
 
-            if st.button("Analyze Image", use_container_width=True):
+            analyze_img = st.button("🔍 Analyze Image", use_container_width=True,
+                                    key="img_btn")
 
+            if analyze_img:
                 with st.spinner("Analyzing image..."):
-                    result = predict_image(image, image_model)  # FIXED
+                    img_result = predict_image(image_model, image)
 
-                ai_score = result.get("ai_score", 0)
-                confidence = result.get("confidence", 0)
-                real_prob = result.get("real_prob", 0)
+                ai_score_img   = img_result.get("ai_score", 0)
+                confidence_img = img_result.get("confidence", 0)
+                real_prob      = img_result.get("real_prob", 0)
+                label_img      = img_result.get("label", "Unknown")
 
-                # ── RESULT ──
-                if confidence < 0.60:
+                # Result Box
+                if confidence_img < 0.60:
                     st.markdown("""
                     <div class="result-uncertain">
-                    <b>UNCERTAIN</b>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                elif ai_score > 0.5:
+                      <div class="result-title">⚠️ UNCERTAIN</div>
+                      <div class="result-sub">Low Confidence — Result may not be reliable</div>
+                    </div>""", unsafe_allow_html=True)
+                elif ai_score_img > 0.50:
                     st.markdown(f"""
                     <div class="result-ai">
-                    <b>AI Generated</b>
-                    <div class="big">{ai_score*100:.1f}%</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
+                      <div class="result-title">🤖 AI Generated</div>
+                      <div class="result-sub">EfficientNet confidence: {confidence_img*100:.1f}%</div>
+                    </div>""", unsafe_allow_html=True)
                 else:
                     st.markdown(f"""
                     <div class="result-human">
-                    <b>Real Image</b>
-                    <div class="big">{ai_score*100:.1f}%</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                      <div class="result-title">✅ Real / Human</div>
+                      <div class="result-sub">EfficientNet confidence: {confidence_img*100:.1f}%</div>
+                    </div>""", unsafe_allow_html=True)
 
-                # ── METRICS ──
-                colA, colB, colC = st.columns(3)
-                colA.markdown(f"<div class='metric'>Confidence<br><b>{confidence*100:.1f}%</b></div>", unsafe_allow_html=True)
-                colB.markdown(f"<div class='metric'>AI Score<br><b>{ai_score*100:.1f}%</b></div>", unsafe_allow_html=True)
-                colC.markdown(f"<div class='metric'>Real Prob<br><b>{real_prob*100:.1f}%</b></div>", unsafe_allow_html=True)
+                # Metric Cards
+                st.markdown(f"""
+                <div class="metric-row">
+                  <div class="metric-card">
+                    <div class="metric-value">{ai_score_img*100:.1f}%</div>
+                    <div class="metric-label">AI Score</div>
+                  </div>
+                  <div class="metric-card">
+                    <div class="metric-value">{confidence_img*100:.1f}%</div>
+                    <div class="metric-label">Confidence</div>
+                  </div>
+                  <div class="metric-card">
+                    <div class="metric-value">{real_prob*100:.1f}%</div>
+                    <div class="metric-label">Real Prob</div>
+                  </div>
+                </div>
+                """, unsafe_allow_html=True)
 
                 st.markdown("<br>", unsafe_allow_html=True)
-                st.progress(float(ai_score))
+                st.markdown(f"**AI Likelihood: {ai_score_img*100:.2f}%**")
+                st.progress(float(ai_score_img))
 
-# ── FOOTER ─────────────────────────────────────────────────
-st.markdown("<br><br>", unsafe_allow_html=True)
-st.caption("AI Content Authenticity Detection System • Final Submission")
+    else:
+        st.info("Upload a JPG, JPEG, PNG or WEBP image to get started.")
+
+# ── Footer ────────────────────────────────────────────────────
+st.markdown("""
+<div class="footer">
+  AI-Generated Content Detection System &nbsp;|&nbsp; 2026
+</div>
+""", unsafe_allow_html=True)
