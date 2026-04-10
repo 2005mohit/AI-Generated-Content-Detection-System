@@ -194,7 +194,7 @@ with tab1:
                 """, unsafe_allow_html=True)
 
             with st.spinner("Analyzing text..."):
-                result = ensemble_predict(user_text)
+                result = ensemble_predict(user_text,tokenizer, model)
 
             ai_score      = result.get("ai_score", 0)
             confidence    = result.get("confidence", 0)
@@ -286,7 +286,7 @@ with tab2:
 
             if analyze_img:
                 with st.spinner("Analyzing image..."):
-                    img_result = predict_image(image_model, image)
+                    img_result = predict_image(image,image_model)
 
                 ai_score_img   = img_result.get("ai_score", 0)
                 confidence_img = img_result.get("confidence", 0)
