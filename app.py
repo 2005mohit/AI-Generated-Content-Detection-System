@@ -3,18 +3,15 @@ from PIL import Image
 import sys
 import os
 
-# ── Path setup ─────────────────────────────────────────────
 sys.path.append(os.path.dirname(__file__))
 from Pipeline.image_pipeline import load_image_model, predict_image
 from Pipeline.text_pipeline import load_text_model, ensemble_predict
 
-# ── Page Config ────────────────────────────────────────────
 st.set_page_config(
     page_title="AI Content Authenticity Detection System",
     layout="wide"
 )
 
-# ── PROFESSIONAL MINIMAL UI ────────────────────────────────
 st.markdown("""
 <style>
     body {
@@ -85,7 +82,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ── Load Models ────────────────────────────────────────────
 @st.cache_resource
 def get_image_model():
     return load_image_model("model/image_model/image_model.pth")
@@ -93,16 +89,13 @@ def get_image_model():
 @st.cache_resource
 def get_text_model():
     return load_text_model("model/text_model")
-
-# ── HEADER ─────────────────────────────────────────────────
+ 
 st.markdown('<div class="header">AI Content Authenticity Detector</div>', unsafe_allow_html=True)
 st.markdown('<div class="subheader">Analyze text and images using detection models</div>', unsafe_allow_html=True)
 
-# ── MODE SWITCH ────────────────────────────────────────────
 mode = st.radio("", ["Text Analysis", "Image Analysis"], horizontal=True)
 st.divider()
 
-# ───────────────────────── TEXT MODE ───────────────────────
 if "Text" in mode:
 
     st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -152,7 +145,6 @@ if "Text" in mode:
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ───────────────────────── IMAGE MODE ──────────────────────
 if "Image" in mode:
 
     st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -169,13 +161,11 @@ if "Image" in mode:
 
         col1, col2 = st.columns([1,1])
 
-        # ── LEFT: IMAGE ──
         with col1:
             st.markdown('<div class="image-box">', unsafe_allow_html=True)
             st.image(image, width=250)
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # ── RIGHT: RESULT ──
         with col2:
             with st.spinner("Processing image..."):
                 image_model = get_image_model()
@@ -188,7 +178,6 @@ if "Image" in mode:
             else:
                 box_class = "result-ai" if label == "AI Generated" else "result-human"
 
-            # ✅ FIXED LOGIC HERE
             if label == "AI Generated":
                 score_value = result['score']
                 score_label = "AI Likelihood"
@@ -217,7 +206,5 @@ if "Image" in mode:
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-
-# ── FOOTER ────────────────────────────────────────────────
 st.divider()
 st.caption("AI Content Authenticity Detection System | For Research And Analysis")
