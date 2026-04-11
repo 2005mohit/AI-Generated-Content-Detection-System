@@ -147,7 +147,7 @@ if "Text" in mode:
             col3.markdown(f"<div class='metric'><b>Heuristic</b><br>{result['heuristic_ai']:.0f}%</div>", unsafe_allow_html=True)
             col4.markdown(f"<div class='metric'><b>Prediction</b><br>{label}</div>", unsafe_allow_html=True)
 
-            st.progress(result['ai_probability'], text=f"Likelihood: {result['score']}%")
+            st.progress(result['ai_probability'], text=f"AI Likelihood: {result['score']}%")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -213,7 +213,7 @@ if "Image" in mode:
             colB.markdown(f"<div class='metric'><b>AI Score</b><br>{result['score']}%</div>", unsafe_allow_html=True)
             colC.markdown(f"<div class='metric'><b>Real Probability</b><br>{round(result['real_probability']*100,2)}%</div>", unsafe_allow_html=True)
 
-            st.progress(result['ai_probability'], text=f"Likelihood: {result['score']}%")
+            st.progress(result['ai_probability'], text=f"AI Likelihood: {result['score']}%")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
