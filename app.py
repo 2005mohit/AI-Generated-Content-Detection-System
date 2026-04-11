@@ -125,7 +125,6 @@ if "Text" in mode:
                 tokenizer, text_model = get_text_model()
                 result = ensemble_predict(user_text, tokenizer, text_model)
 
-            # ── UNCERTAIN LOGIC ──
             label = result["label"]
             if result["confidence"] < 60:
                 label = "UNCERTAIN"
@@ -170,17 +169,18 @@ if "Image" in mode:
 
         col1, col2 = st.columns([1,1])
 
+        # ── LEFT: IMAGE ──
         with col1:
             st.markdown('<div class="image-box">', unsafe_allow_html=True)
-            st.image(image, width=250)  # ← ZOOM OUT EFFECT
+            st.image(image, width=250)
             st.markdown('</div>', unsafe_allow_html=True)
 
+        # ── RIGHT: RESULT ──
         with col2:
             with st.spinner("Processing image..."):
                 image_model = get_image_model()
                 result = predict_image(image, image_model)
 
-            # ── UNCERTAIN LOGIC ──
             label = result["label"]
             if result["confidence"] < 60:
                 label = "UNCERTAIN"
@@ -188,11 +188,22 @@ if "Image" in mode:
             else:
                 box_class = "result-ai" if label == "AI Generated" else "result-human"
 
+            # ✅ FIXED LOGIC HERE
+            if label == "AI Generated":
+                score_value = result['score']
+                score_label = "AI Likelihood"
+            elif label == "UNCERTAIN":
+                score_value = result['score']
+                score_label = "AI Likelihood"
+            else:
+                score_value = round(result['real_probability'] * 100, 2)
+                score_label = "Real Probability"
+
             st.markdown(f"""
             <div class="{box_class}">
                 <strong>{label}</strong>
-                <div class="big-score">{result['score']}%</div>
-                <div>AI Likelihood</div>
+                <div class="big-score">{score_value}%</div>
+                <div>{score_label}</div>
             </div>
             """, unsafe_allow_html=True)
 
